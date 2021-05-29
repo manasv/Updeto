@@ -10,7 +10,7 @@ Updeto is a simple package that will help you to check if the currently installe
 
 `Updeto` is available via Swift Package Manager
 
-Using `Xcode go to `File -> Swift Packages -> Add Package Dependency` and enter `https://github.com/manasv/Updeto`
+Using `Xcode` go to `File -> Swift Packages -> Add Package Dependency` and enter `https://github.com/manasv/Updeto`
 
 # Usage
 
