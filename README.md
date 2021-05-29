@@ -55,7 +55,7 @@ Hope you can find this useful, even if you can do what the library does without 
 
 # Contributing
 
-1. Fork QGrid
+1. Fork Updeto
 2. Create your feature branch
 3. Commit your changes, along with unit tests (Currently using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).)
 4. Push to the branch
