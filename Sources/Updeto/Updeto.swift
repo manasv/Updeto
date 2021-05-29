@@ -28,8 +28,20 @@ import Foundation
 import Combine
 #endif
 
-public final class Updeto {
+// MARK: - UpdetoType Protocol Definition
+
+protocol UpdetoType {
+    @available(macOS 10.15, iOS 13.0, *)
+    func isAppUpdated() -> AnyPublisher<Bool, Error>
+    func isAppUpdated(completion: @escaping (Result<Bool, Error>) -> Void)
+    var appstoreURL: URL? { get }
+}
+
+// MARK: - Updeto
+
+public final class Updeto: UpdetoType {
     // MARK: - Private Properties
+    
     private let urlSession: URLSession
     private let decoder: JSONDecoder
     private let bundleId: String
@@ -37,6 +49,7 @@ public final class Updeto {
     private var appId: String
 
     // MARK: - Singleton
+    
     #if canImport(UIKit)
     static var shared = Updeto()
     #endif
