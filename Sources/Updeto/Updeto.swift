@@ -51,7 +51,7 @@ public final class Updeto: UpdetoType {
     // MARK: - Singleton
     
     #if canImport(UIKit)
-    static var shared = Updeto()
+    public static var shared = Updeto()
     #endif
 
     // MARK: - Initializers
