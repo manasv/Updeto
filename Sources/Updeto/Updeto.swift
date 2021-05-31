@@ -122,7 +122,7 @@ public final class Updeto: UpdetoType {
 
                 self.appId = result.appId
 
-                return result.version == "2.0.2"
+                return result.version == self.currentAppVersion
             }
             .eraseToAnyPublisher()
     }
