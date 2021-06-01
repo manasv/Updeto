@@ -6,35 +6,82 @@ import Foundation
 import Combine
 #endif
 
-struct UpdetoMock: UpdetoType {
-    let shouldFail: Bool
-    let isUpdated: Bool
+final class UpdetoMock: UpdetoType {
+    let bundleId: String
+    let currentAppVersion: String
+    let responseType: Mock
+
+    var appId: String = ""
+    var appstoreURL: URL? {
+        appId.isEmpty ? nil : URL(string: "itms-apps://apple.com/app/id\(appId)")
+    }
 
     init(
-        shouldFail: Bool = false,
-        isUpdated: Bool = false
+        bundleId: String,
+        currentAppVersion: String,
+        responseType: Mock
     ) {
-        self.shouldFail = shouldFail
-        self.isUpdated = isUpdated
+        self.bundleId = bundleId
+        self.currentAppVersion = currentAppVersion
+        self.responseType = responseType
     }
 
-    func isAppUpdated() -> AnyPublisher<Bool, Error> {
-        if shouldFail {
-            return Fail(error: LookupError.noResults).eraseToAnyPublisher()
+    @available(iOS 13, *)
+    func isAppUpdated() -> AnyPublisher<AppStoreLookupResult, Never> {
+        if let response = responseType.response.results.first {
+            let result = response.version == currentAppVersion ? AppStoreLookupResult.updated : .outdated
+            appId = response.appId
+            return Just(result).eraseToAnyPublisher()
         } else {
-            return Just(isUpdated)
-                .setFailureType(to: Error.self)
-                .eraseToAnyPublisher()
+            return Just(.noResults).eraseToAnyPublisher()
         }
     }
 
-    func isAppUpdated(completion: @escaping (Result<Bool, Error>) -> Void) {
-        if shouldFail {
-            completion(.failure(LookupError.noResults))
+    func isAppUpdated(completion: @escaping (AppStoreLookupResult) -> Void) {
+        if let response = responseType.response.results.first {
+            let result = response.version == currentAppVersion ? AppStoreLookupResult.updated : .outdated
+            appId = response.appId
+            completion(result)
         } else {
-            completion(.success(isUpdated))
+            completion(.noResults)
+        }
+    }
+}
+
+enum Mock {
+    case withResults
+    case noResults
+
+    var data: Data {
+        switch self {
+        case .withResults:
+            return """
+                {
+                  "resultCount": 1,
+                  "results": [
+                    {
+                      "trackId": 123456789,
+                      "bundleId": "com.example.app",
+                      "version": "1.0.0"
+                    }
+                  ]
+                }
+                """.data(using: .utf8) ?? Data()
+        case .noResults:
+            return """
+                {
+                  "resultCount": 0,
+                  "results": []
+                }
+                """.data(using: .utf8) ?? Data()
         }
     }
 
-    var appstoreURL: URL?
+    var response: AppStoreLookup {
+        do {
+            return try JSONDecoder().decode(AppStoreLookup.self, from: self.data)
+        } catch {
+            return AppStoreLookup(resultCount: 0, results: [])
+        }
+    }
 }
