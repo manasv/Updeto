@@ -21,10 +21,12 @@ If you are either on iOS / iPadOS, you will have access to a singleton that auto
 ```swift
 Updeto.shared.isAppUpdated { result in
     switch result {
-    case .success(let value):
-        // Do something with the value
-    case .failure(let error):
-        // Do something with the error
+    case .updated:
+        // Do something 
+    case .outdated:
+        // Do something 
+    case .noResults:
+        // Do something
     }
 }
 ```
