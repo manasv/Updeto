@@ -32,8 +32,11 @@ import Combine
 
 protocol UpdetoType {
     @available(macOS 10.15, iOS 13.0, *)
-    func isAppUpdated() -> AnyPublisher<Bool, Error>
-    func isAppUpdated(completion: @escaping (Result<Bool, Error>) -> Void)
+    func isAppUpdated() -> AnyPublisher<AppStoreLookupResult, Never>
+    func isAppUpdated(completion: @escaping (AppStoreLookupResult) -> Void)
+    var bundleId: String { get }
+    var currentAppVersion: String { get }
+    var appId: String { get set }
     var appstoreURL: URL? { get }
 }
 
@@ -41,21 +44,23 @@ protocol UpdetoType {
 
 public final class Updeto: UpdetoType {
     // MARK: - Private Properties
-    
+
     private let urlSession: URLSession
     private let decoder: JSONDecoder
-    private let bundleId: String
-    private let currentAppVersion: String
-    private var appId: String
+    
+    // MARK: - Protocol Properties
+    var appId: String
+    let bundleId: String
+    let currentAppVersion: String
 
     // MARK: - Singleton
-    
+
     #if canImport(UIKit)
     public static var shared = Updeto()
     #endif
 
     // MARK: - Initializers
-    
+
     #if canImport(UIKit)
     public init(
         urlSession: URLSession = .shared,
@@ -88,7 +93,7 @@ public final class Updeto: UpdetoType {
     #endif
 
     // MARK: - Computed Properties
-    
+
     /// URLRequest to verify latest App Store version for the Bundle ID
     private var lookupRequest: URLRequest {
         let url = URL(string: "https://itunes.apple.com/lookup?bundleId=\(bundleId)")!
@@ -97,48 +102,43 @@ public final class Updeto: UpdetoType {
 
         return request
     }
-    
+
     // MARK: - Public Properties
 
     /// App Store URL that can be opened to see the Store Page for the App
     public var appstoreURL: URL? {
         appId.isEmpty ? nil : URL(string: "itms-apps://apple.com/app/id\(appId)")
     }
-    
+
     // MARK: - Public Methods
 
     /// Retrieves metadata from the App Store for the Bundle ID provided and compares versions to determine if an update is needed.
-    /// - throws: `LookupError` if the lookup was unsuccessful.
+    /// - returns: A publisher with `AppStoreLookupResult`  with the status of the lookup operation.
     @available(macOS 10.15, iOS 13.0, *)
-    public func isAppUpdated() -> AnyPublisher<Bool, Error> {
+    public func isAppUpdated() -> AnyPublisher<AppStoreLookupResult, Never> {
         urlSession
             .dataTaskPublisher(for: lookupRequest)
             .map { $0.data }
             .decode(type: AppStoreLookup.self, decoder: decoder)
-            .tryMap {
+            .map {
                 guard !$0.results.isEmpty, let result = $0.results.first else {
-                    throw LookupError.noResults
+                    return .noResults
                 }
 
                 self.appId = result.appId
 
-                return result.version == self.currentAppVersion
+                return result.version == self.currentAppVersion ? .updated : .outdated
             }
+            .replaceError(with: .noResults)
             .eraseToAnyPublisher()
     }
 
     /// Retrieves metadata from the App Store for the Bundle ID provided and compares versions to determine if an update is needed.
     /// - parameter completion: The completion block to be called on the main thread when the validation has finished.
-    /// - throws: `LookupError` if the lookup was unsuccessful.
-    public func isAppUpdated(completion: @escaping (Result<Bool, Error>) -> Void) {
+    /// - returns: `AppStoreLookupResult` with the status of the lookup operation.
+    public func isAppUpdated(completion: @escaping (AppStoreLookupResult) -> Void) {
         urlSession
-            .dataTask(with: lookupRequest) { data, _, error in
-                if let error = error {
-                    DispatchQueue.main.async {
-                        completion(.failure(error))
-                    }
-                }
-
+            .dataTask(with: lookupRequest) { data, _, _ in
                 guard let data = data,
                     let lookup = try? self.decoder.decode(AppStoreLookup.self, from: data)
                 else {
@@ -149,12 +149,13 @@ public final class Updeto: UpdetoType {
                     self.appId = result.appId
 
                     DispatchQueue.main.async {
-                        completion(.success(result.version == self.currentAppVersion))
+                        completion(
+                            result.version == self.currentAppVersion ? .updated : .outdated
+                        )
                     }
-
                 } else {
                     DispatchQueue.main.async {
-                        completion(.failure(LookupError.noResults))
+                        completion(.noResults)
                     }
                 }
             }.resume()
@@ -191,17 +192,26 @@ struct AppStoreLookup: Decodable {
     }
 }
 
-// MARK: Errors
+// MARK: - AppstoreLookupResult
 
-enum LookupError: Error {
+public enum AppStoreLookupResult: Equatable {
+    case updated
+    case outdated
     case noResults
-}
 
-extension LookupError: LocalizedError {
-    var errorDescription: String? {
+    /// Lookup Result description.
+    var description: String {
         switch self {
         case .noResults:
             return "The query produced no results, please check the BundleID provided is correct."
+        case .updated:
+            return "The app is currently the latest version"
+        case .outdated:
+            return "The app has an update available"
         }
+    }
+
+    public static func == (lhs: AppStoreLookupResult, rhs: AppStoreLookupResult) -> Bool {
+        lhs.description == rhs.description
     }
 }
