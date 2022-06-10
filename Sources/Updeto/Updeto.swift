@@ -60,7 +60,7 @@ public final class Updeto: UpdetoType {
     #endif
 
     // MARK: - Initializers
-
+    //Finds the current app bundle ID for the App Store which is stored in a variable, bundleID, for later use in the API call
     #if canImport(UIKit)
     public init(
         urlSession: URLSession = .shared,
