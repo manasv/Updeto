@@ -61,6 +61,7 @@ public final class Updeto: UpdetoType {
 
     // MARK: - Initializers
     //Finds the current app bundle ID for the App Store which is stored in a variable, bundleID, for later use in the API call
+    //Finds the current app version from the local app information which is later compared to the version fetched by the API call to see if the app is outdated
     #if canImport(UIKit)
     public init(
         urlSession: URLSession = .shared,
