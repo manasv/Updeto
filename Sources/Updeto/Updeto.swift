@@ -127,7 +127,16 @@ public final class Updeto: UpdetoType {
 
                 self.appId = result.appId
 
-                return result.version == self.currentAppVersion ? .updated : .outdated
+                //return result.version == self.currentAppVersion ? .updated : .outdated
+                if result.version == self.currentAppVersion {
+                    return .updated
+                }
+                else if result.version > self.currentAppVersion {
+                    return .updated
+                }
+                else {
+                    return .outdated
+                }
             }
             .replaceError(with: .noResults)
             .eraseToAnyPublisher()
