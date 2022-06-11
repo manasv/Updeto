@@ -150,7 +150,16 @@ public final class Updeto: UpdetoType {
 
                     DispatchQueue.main.async {
                         completion(
-                            result.version == self.currentAppVersion ? .updated : .outdated
+                            //result.version == self.currentAppVersion ? .updated : .outdated
+                            if result.version == self.currentAppVersion {
+                                return .updated
+                            }
+                            else if result.version > self.currentAppVersion {
+                                return .updated
+                            }
+                            else {
+                                return .outdated
+                            }
                         )
                     }
                 } else {
