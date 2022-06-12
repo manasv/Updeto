@@ -128,14 +128,16 @@ public final class Updeto: UpdetoType {
                 self.appId = result.appId
 
                 //return result.version == self.currentAppVersion ? .updated : .outdated
-                if result.version == self.currentAppVersion {
+                switch result.version {
+                case result.version == self.currentAppVersion {
                     return .updated
                 }
-                else if result.version > self.currentAppVersion {
+                case result.version > self.currentAppVersion {
                     return .updated
                 }
-                else {
+                default {
                     return .outdated
+                }
                 }
             }
             .replaceError(with: .noResults)
@@ -160,14 +162,16 @@ public final class Updeto: UpdetoType {
                     DispatchQueue.main.async {
                         completion(
                             //result.version == self.currentAppVersion ? .updated : .outdated
-                            if result.version == self.currentAppVersion {
+                            switch result.version {
+                            case result.version == self.currentAppVersion {
                                 return .updated
                             }
-                            else if result.version > self.currentAppVersion {
+                            case result.version > self.currentAppVersion {
                                 return .updated
                             }
-                            else {
+                            default {
                                 return .outdated
+                            }
                             }
                         )
                     }
