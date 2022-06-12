@@ -128,16 +128,14 @@ public final class Updeto: UpdetoType {
                 self.appId = result.appId
 
                 //return result.version == self.currentAppVersion ? .updated : .outdated
-                switch result.version {
-                case result.version == self.currentAppVersion {
+                if result.version == self.currentAppVersion {
                     return .updated
                 }
-                case result.version > self.currentAppVersion {
+                else if result.version > self.currentAppVersion {
                     return .updated
                 }
-                default {
+                else {
                     return .outdated
-                }
                 }
             }
             .replaceError(with: .noResults)
@@ -160,20 +158,16 @@ public final class Updeto: UpdetoType {
                     self.appId = result.appId
 
                     DispatchQueue.main.async {
-                        completion(
                             //result.version == self.currentAppVersion ? .updated : .outdated
-                            switch result.version {
-                            case result.version == self.currentAppVersion {
-                                return .updated
+                            if result.version == self.currentAppVersion {
+                                completion(.updated)
                             }
-                            case result.version > self.currentAppVersion {
-                                return .updated
+                            else if result.version > self.currentAppVersion {
+                                completion(.updated)
                             }
-                            default {
-                                return .outdated
+                            else {
+                                completion(.outdated)
                             }
-                            }
-                        )
                     }
                 } else {
                     DispatchQueue.main.async {
