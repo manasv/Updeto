@@ -160,6 +160,32 @@ public final class Updeto: UpdetoType {
                 }
             }.resume()
     }
+
+    private func compareVersions(_ firstVersion: String, _ secondVersion: String) -> ComparisonResult {
+        let versionDelimiter = "."
+        var firstVersionComponents = firstVersion.components(separatedBy: versionDelimiter)
+        var secondVersionComponents = secondVersion.components(separatedBy: versionDelimiter)
+
+        let versionDiff = firstVersionComponents.count - secondVersionComponents.count
+
+        if versionDiff == 0 {
+            // Both versions are in the same format, compare normally
+            return firstVersion.compare(secondVersion, options: .numeric)
+        } else {
+            let zeros = Array(repeating: "0", count: abs(versionDiff))
+            // Determine which version needs to be adapted to match component count
+            if versionDiff > 0 {
+                secondVersionComponents.append(contentsOf: zeros)
+            } else {
+                firstVersionComponents.append(contentsOf: zeros)
+            }
+            return firstVersionComponents.joined(separator: versionDelimiter)
+                .compare(
+                    secondVersionComponents.joined(separator: versionDelimiter),
+                    options: .numeric
+                )
+        }
+    }
 }
 
 // MARK: - AppStoreLookup
