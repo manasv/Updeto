@@ -132,7 +132,7 @@ public final class Updeto: UpdetoType {
                     return .updated
                 }
                 else if result.version > self.currentAppVersion {
-                    return .updated
+                    return .outdated
                 }
                 else {
                     return .outdated
@@ -163,7 +163,7 @@ public final class Updeto: UpdetoType {
                                 completion(.updated)
                             }
                             else if result.version > self.currentAppVersion {
-                                completion(.updated)
+                                completion(.outdated)
                             }
                             else {
                                 completion(.outdated)
