@@ -8,7 +8,7 @@ import Combine
 
 final class UpdetoMock: UpdetoType {
     let bundleId: String
-    let currentAppVersion: String
+    let installedAppVersion: String
     let responseType: Mock
 
     var appId: String = ""
@@ -18,18 +18,18 @@ final class UpdetoMock: UpdetoType {
 
     init(
         bundleId: String,
-        currentAppVersion: String,
+        installedAppVersion: String,
         responseType: Mock
     ) {
         self.bundleId = bundleId
-        self.currentAppVersion = currentAppVersion
+        self.installedAppVersion = installedAppVersion
         self.responseType = responseType
     }
 
     @available(iOS 13, *)
     func isAppUpdated() -> AnyPublisher<AppStoreLookupResult, Never> {
         if let response = responseType.response.results.first {
-            let result = response.version == currentAppVersion ? AppStoreLookupResult.updated : .outdated
+            let result = response.version == installedAppVersion ? AppStoreLookupResult.updated : .outdated
             appId = response.appId
             return Just(result).eraseToAnyPublisher()
         } else {
@@ -39,7 +39,7 @@ final class UpdetoMock: UpdetoType {
 
     func isAppUpdated(completion: @escaping (AppStoreLookupResult) -> Void) {
         if let response = responseType.response.results.first {
-            let result = response.version == currentAppVersion ? AppStoreLookupResult.updated : .outdated
+            let result = response.version == installedAppVersion ? AppStoreLookupResult.updated : .outdated
             appId = response.appId
             completion(result)
         } else {

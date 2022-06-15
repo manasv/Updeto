@@ -15,7 +15,7 @@ final class UpdetoTests: XCTestCase {
 
     func testAppIsUpToDateAndWithoutErrorsOnLookup() throws {
         // Given
-        let updeto = UpdetoMock(bundleId: "com.example.app", currentAppVersion: "1.0.0", responseType: .withResults)
+        let updeto = UpdetoMock(bundleId: "com.example.app", installedAppVersion: "1.0.0", responseType: .withResults)
 
         // When
         if #available(iOS 13.0, *) {
@@ -40,7 +40,7 @@ final class UpdetoTests: XCTestCase {
     
     func testAppIsNotUpDateAndWithoutErrorsOnLookup() throws {
         // Given
-        let updeto = UpdetoMock(bundleId: "com.example.app", currentAppVersion: "0.0.1", responseType: .withResults)
+        let updeto = UpdetoMock(bundleId: "com.example.app", installedAppVersion: "0.0.1", responseType: .withResults)
 
         // When
         if #available(iOS 13.0, *) {

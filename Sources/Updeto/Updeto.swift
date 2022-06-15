@@ -35,7 +35,7 @@ protocol UpdetoType {
     func isAppUpdated() -> AnyPublisher<AppStoreLookupResult, Never>
     func isAppUpdated(completion: @escaping (AppStoreLookupResult) -> Void)
     var bundleId: String { get }
-    var currentAppVersion: String { get }
+    var installedAppVersion: String { get }
     var appId: String { get set }
     var appstoreURL: URL? { get }
 }
@@ -47,11 +47,11 @@ public final class Updeto: UpdetoType {
 
     private let urlSession: URLSession
     private let decoder: JSONDecoder
-    
+
     // MARK: - Protocol Properties
     var appId: String
     let bundleId: String
-    let currentAppVersion: String
+    let installedAppVersion: String
 
     // MARK: - Singleton
 
@@ -66,13 +66,13 @@ public final class Updeto: UpdetoType {
         urlSession: URLSession = .shared,
         decoder: JSONDecoder = JSONDecoder(),
         bundleId: String = Bundle.main.bundleIdentifier!,
-        currentAppVersion: String = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)!,
+        installedAppVersion: String = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)!,
         appId: String = ""
     ) {
         self.urlSession = urlSession
         self.decoder = decoder
         self.bundleId = bundleId
-        self.currentAppVersion = currentAppVersion
+        self.installedAppVersion = installedAppVersion
         self.appId = appId
     }
     #else
@@ -80,13 +80,13 @@ public final class Updeto: UpdetoType {
         urlSession: URLSession = .shared,
         decoder: JSONDecoder = JSONDecoder(),
         bundleId: String,
-        currentAppVersion: String,
+        installedAppVersion: String,
         appId: String = ""
     ) {
         self.urlSession = urlSession
         self.decoder = decoder
         self.bundleId = bundleId
-        self.currentAppVersion = currentAppVersion
+        self.installedAppVersion = installedAppVersion
         self.appId = appId
 
     }
@@ -127,7 +127,7 @@ public final class Updeto: UpdetoType {
 
                 self.appId = result.appId
 
-                return result.version == self.currentAppVersion ? .updated : .outdated
+                return result.version == self.installedAppVersion ? .updated : .outdated
             }
             .replaceError(with: .noResults)
             .eraseToAnyPublisher()
@@ -145,12 +145,11 @@ public final class Updeto: UpdetoType {
                     return
                 }
 
-                if !lookup.results.isEmpty, let result = lookup.results.first {
-                    self.appId = result.appId
-
+                if !lookup.results.isEmpty, let appStore = lookup.results.first {
+                    self.appId = appStore.appId
                     DispatchQueue.main.async {
                         completion(
-                            result.version == self.currentAppVersion ? .updated : .outdated
+                            self.compareVersions(appStore.version, self.installedAppVersion).appstoreLookupResult
                         )
                     }
                 } else {
@@ -184,6 +183,17 @@ public final class Updeto: UpdetoType {
                     secondVersionComponents.joined(separator: versionDelimiter),
                     options: .numeric
                 )
+        }
+    }
+
+    private func mapComparisonToLookupResult(_ comparisonResult: ComparisonResult) -> AppStoreLookupResult {
+        switch comparisonResult {
+        case .orderedSame:
+            return .updated
+        case .orderedDescending:
+            return .outdated
+        case .orderedAscending:
+            return .developmentOrBeta
         }
     }
 }
@@ -223,21 +233,37 @@ struct AppStoreLookup: Decodable {
 public enum AppStoreLookupResult: Equatable {
     case updated
     case outdated
+    case developmentOrBeta
     case noResults
 
     /// Lookup Result description.
     var description: String {
         switch self {
-        case .noResults:
-            return "The query produced no results, please check the BundleID provided is correct."
         case .updated:
             return "The app is currently the latest version"
         case .outdated:
             return "The app has an update available"
+        case .developmentOrBeta:
+            return "The app version is either from a development or beta build."
+        case .noResults:
+            return "The query produced no results, please check the BundleID provided is correct."
         }
     }
 
     public static func == (lhs: AppStoreLookupResult, rhs: AppStoreLookupResult) -> Bool {
         lhs.description == rhs.description
+    }
+}
+
+fileprivate extension ComparisonResult {
+    var appstoreLookupResult: AppStoreLookupResult {
+        switch self {
+        case .orderedSame:
+            return .updated
+        case .orderedDescending:
+            return .outdated
+        case .orderedAscending:
+            return .developmentOrBeta
+        }
     }
 }
