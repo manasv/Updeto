@@ -65,7 +65,7 @@ final class UpdetoTests: XCTestCase {
     
     func testLookupHaveNoResults() throws {
         // Given
-        let updeto = UpdetoMock(bundleId: "com.example.app", currentAppVersion: "0.0.1", responseType: .noResults)
+        let updeto = UpdetoMock(bundleId: "com.example.app", installedAppVersion: "0.0.1", responseType: .noResults)
 
         // When
         if #available(iOS 13.0, *) {
@@ -85,5 +85,29 @@ final class UpdetoTests: XCTestCase {
         let unwrappedResult = try XCTUnwrap(result)
         XCTAssertEqual(unwrappedResult, .noResults)
         XCTAssertNil(updeto.appstoreURL)
+    }
+
+    func testLookupUsingTesflightWithHigherVersionNumber() throws {
+        // Given
+        let updeto = UpdetoMock(bundleId: "com.example.app", installedAppVersion: "2.0.0", responseType: .withResults)
+
+        // When
+        if #available(iOS 13.0, *) {
+            updeto.isAppUpdated()
+                .compactMap { $0 }
+                .assign(to: \.result, on: self)
+                .cancel()
+        } else {
+            updeto.isAppUpdated { lookupResult in
+                self.result = lookupResult
+            }
+        }
+
+        _ = XCTWaiter.wait(for: [XCTestExpectation()], timeout: 0.2)
+
+        //Then
+        let unwrappedResult = try XCTUnwrap(result)
+        XCTAssertEqual(unwrappedResult, .developmentOrBeta)
+        XCTAssertNotNil(updeto.appstoreURL)
     }
 }

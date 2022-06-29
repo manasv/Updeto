@@ -29,7 +29,8 @@ final class UpdetoMock: UpdetoType {
     @available(iOS 13, *)
     func isAppUpdated() -> AnyPublisher<AppStoreLookupResult, Never> {
         if let response = responseType.response.results.first {
-            let result = response.version == installedAppVersion ? AppStoreLookupResult.updated : .outdated
+            let result = compareVersions(response.version, installedAppVersion).appstoreLookupResult
+
             appId = response.appId
             return Just(result).eraseToAnyPublisher()
         } else {
@@ -39,11 +40,38 @@ final class UpdetoMock: UpdetoType {
 
     func isAppUpdated(completion: @escaping (AppStoreLookupResult) -> Void) {
         if let response = responseType.response.results.first {
-            let result = response.version == installedAppVersion ? AppStoreLookupResult.updated : .outdated
+            let result = compareVersions(response.version, installedAppVersion).appstoreLookupResult
+
             appId = response.appId
             completion(result)
         } else {
             completion(.noResults)
+        }
+    }
+
+    private func compareVersions(_ appstoreVersion: String, _ installedVersion: String) -> ComparisonResult {
+        let versionDelimiter = "."
+        var firstVersionComponents = appstoreVersion.components(separatedBy: versionDelimiter)
+        var secondVersionComponents = installedVersion.components(separatedBy: versionDelimiter)
+
+        let versionDiff = firstVersionComponents.count - secondVersionComponents.count
+
+        if versionDiff == 0 {
+            // Both versions are in the same format, compare normally
+            return appstoreVersion.compare(installedVersion, options: .numeric)
+        } else {
+            let zeros = Array(repeating: "0", count: abs(versionDiff))
+            // Determine which version needs to be adapted to match component count
+            if versionDiff > 0 {
+                secondVersionComponents.append(contentsOf: zeros)
+            } else {
+                firstVersionComponents.append(contentsOf: zeros)
+            }
+            return firstVersionComponents.joined(separator: versionDelimiter)
+                .compare(
+                    secondVersionComponents.joined(separator: versionDelimiter),
+                    options: .numeric
+                )
         }
     }
 }
