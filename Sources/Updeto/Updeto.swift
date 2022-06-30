@@ -231,9 +231,15 @@ struct AppStoreLookup: Decodable {
 // MARK: - AppstoreLookupResult
 
 public enum AppStoreLookupResult: Equatable {
+    /// State that means the app is currently updated
     case updated
+    /// State that means the app is currently outdated
     case outdated
+    /// State that means installed version is higher than latest on AppStore.
+    /// This is possible if the installed version is a development / beta build (eg. Xcode, Testflight).
+    /// Worst case scenario is that the response from apple is outdated, which is unlikely to happen.
     case developmentOrBeta
+    /// State that means that the bundleId query returned no results
     case noResults
 
     /// Lookup Result description.

@@ -30,6 +30,8 @@ Updeto.shared.isAppUpdated { result in
         // Do something 
     case .noResults:
         // Do something
+    case .developmentOrBeta:
+        // Do something
     }
 }
 ```
