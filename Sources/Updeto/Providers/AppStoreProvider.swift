@@ -124,26 +124,43 @@ public final class AppStoreProvider: UpdateProvider {
             }.resume()
     }
 
-    private func compareVersions(_ appstoreVersion: String, _ installedVersion: String) -> ComparisonResult {
+    /**
+     Compares two version strings to determine their order.
+
+     This method compares the version of the app available on the App Store
+     (`appstoreVersion`) with the currently installed version (`installedVersion`).
+     It handles cases where the versions have different numbers of components
+     by padding the shorter version with zeros.
+
+     - Parameters:
+       - appstoreVersion: The version string from the App Store (e.g., "1.2.3").
+       - installedVersion: The version string of the installed app (e.g., "1.2").
+
+     - Returns: A `ComparisonResult` indicating the order of the versions:
+       - `.orderedAscending`: The installed version is newer (e.g., development or beta).
+       - `.orderedSame`: The versions are the same.
+       - `.orderedDescending`: The App Store version is newer (e.g., an update is available).
+     */
+    func compareVersions(_ appstoreVersion: String, _ installedVersion: String) -> ComparisonResult {
         let versionDelimiter = "."
-        var firstVersionComponents = appstoreVersion.components(separatedBy: versionDelimiter)
-        var secondVersionComponents = installedVersion.components(separatedBy: versionDelimiter)
-        let versionDiff = firstVersionComponents.count - secondVersionComponents.count
-        if versionDiff == 0 {
-            return appstoreVersion.compare(installedVersion, options: .numeric)
-        } else {
-            let zeros = Array(repeating: "0", count: abs(versionDiff))
-            if versionDiff > 0 {
-                secondVersionComponents.append(contentsOf: zeros)
-            } else {
-                firstVersionComponents.append(contentsOf: zeros)
-            }
-            return firstVersionComponents.joined(separator: versionDelimiter)
-                .compare(
-                    secondVersionComponents.joined(separator: versionDelimiter),
-                    options: .numeric
-                )
+
+        // Split version strings into components
+        var appstoreComponents = appstoreVersion.components(separatedBy: versionDelimiter)
+        var installedComponents = installedVersion.components(separatedBy: versionDelimiter)
+
+        // Equalize the number of components by padding with zeros
+        let componentDifference = appstoreComponents.count - installedComponents.count
+        if componentDifference > 0 {
+            installedComponents.append(contentsOf: Array(repeating: "0", count: componentDifference))
+        } else if componentDifference < 0 {
+            appstoreComponents.append(contentsOf: Array(repeating: "0", count: -componentDifference))
         }
+
+        // Compare the normalized version strings
+        let normalizedAppstoreVersion = appstoreComponents.joined(separator: versionDelimiter)
+        let normalizedInstalledVersion = installedComponents.joined(separator: versionDelimiter)
+
+        return normalizedAppstoreVersion.compare(normalizedInstalledVersion, options: .numeric)
     }
 }
 
