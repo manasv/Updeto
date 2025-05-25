@@ -1,7 +1,7 @@
 /**
  *  Updeto
  *
- *  Copyright (c) 2021 Manuel Sánchez. Licensed under the MIT license, as follows:
+ *  Copyright (c) 2025 Manuel Sánchez. Licensed under the MIT license, as follows:
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the "Software"), to deal
@@ -23,253 +23,52 @@
  */
 
 import Foundation
-
 #if canImport(Combine)
 import Combine
 #endif
+import Models.AppStoreLookupResult
+import Providers.UpdateProvider
+import Providers.AppStoreProvider
 
-// MARK: - UpdetoType Protocol Definition
+// MARK: - Updeto (Facade)
 
-protocol UpdetoType {
-    @available(macOS 10.15, iOS 13.0, *)
-    func isAppUpdated() -> AnyPublisher<AppStoreLookupResult, Never>
-    func isAppUpdated(completion: @escaping (AppStoreLookupResult) -> Void)
-    var bundleId: String { get }
-    var installedAppVersion: String { get }
-    var appId: String { get set }
-    var appstoreURL: URL? { get }
-}
+/// Updeto is the main entry point for checking app updates using a pluggable provider system.
+///
+/// By default, it uses the App Store provider, but you can inject any custom provider conforming to `UpdateProvider`.
+public final class Updeto: UpdateProvider {
+    private let provider: UpdateProvider
 
-// MARK: - Updeto
-
-public final class Updeto: UpdetoType {
-    // MARK: - Private Properties
-
-    private let urlSession: URLSession
-    private let decoder: JSONDecoder
-
-    // MARK: - Protocol Properties
-    var appId: String
-    let bundleId: String
-    let installedAppVersion: String
-
-    // MARK: - Singleton
-
-    #if canImport(UIKit)
-    public static var shared = Updeto()
-    #endif
-
-    // MARK: - Initializers
-
-    #if canImport(UIKit)
-    public init(
-        urlSession: URLSession = .shared,
-        decoder: JSONDecoder = JSONDecoder(),
-        bundleId: String = Bundle.main.bundleIdentifier!,
-        installedAppVersion: String = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)!,
-        appId: String = ""
-    ) {
-        self.urlSession = urlSession
-        self.decoder = decoder
-        self.bundleId = bundleId
-        self.installedAppVersion = installedAppVersion
-        self.appId = appId
+    /// The bundle identifier of the app being checked.
+    public var bundleId: String { provider.bundleId }
+    /// The currently installed version of the app.
+    public var installedAppVersion: String { provider.installedAppVersion }
+    /// The App Store app ID, if available.
+    public var appId: String {
+        get { provider.appId }
+        set { provider.appId = newValue }
     }
-    #else
-    public init(
-        urlSession: URLSession = .shared,
-        decoder: JSONDecoder = JSONDecoder(),
-        bundleId: String,
-        installedAppVersion: String,
-        appId: String = ""
-    ) {
-        self.urlSession = urlSession
-        self.decoder = decoder
-        self.bundleId = bundleId
-        self.installedAppVersion = installedAppVersion
-        self.appId = appId
+    /// The App Store URL for the app, if available.
+    public var appstoreURL: URL? { provider.appstoreURL }
 
-    }
-    #endif
-
-    // MARK: - Computed Properties
-
-    /// URLRequest to verify latest App Store version for the Bundle ID
-    private var lookupRequest: URLRequest {
-        let url = URL(string: "https://itunes.apple.com/lookup?bundleId=\(bundleId)")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-
-        return request
+    /// Creates an Updeto instance with the given update provider.
+    /// - Parameter provider: The update provider to use. Defaults to `AppStoreProvider()`.
+    public init(provider: UpdateProvider = AppStoreProvider()) {
+        self.provider = provider
     }
 
-    // MARK: - Public Properties
-
-    /// App Store URL that can be opened to see the Store Page for the App
-    public var appstoreURL: URL? {
-        appId.isEmpty ? nil : URL(string: "itms-apps://apple.com/app/id\(appId)")
-    }
-
-    // MARK: - Public Methods
-
-    /// Retrieves metadata from the App Store for the Bundle ID provided and compares versions to determine if an update is needed.
-    /// - returns: A publisher with `AppStoreLookupResult`  with the status of the lookup operation.
-    @available(macOS 10.15, iOS 13.0, *)
+    /// Checks if the app is updated using Combine.
+    ///
+    /// - Returns: A publisher emitting the result of the update check as `AppStoreLookupResult`.
+    /// - Note: Available on macOS 12.0+, iOS 15.0+, tvOS 15.0+.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
     public func isAppUpdated() -> AnyPublisher<AppStoreLookupResult, Never> {
-        urlSession
-            .dataTaskPublisher(for: lookupRequest)
-            .map { $0.data }
-            .decode(type: AppStoreLookup.self, decoder: decoder)
-            .map {
-                guard !$0.results.isEmpty, let result = $0.results.first else {
-                    return .noResults
-                }
-
-                self.appId = result.appId
-
-                return self.compareVersions(result.version, self.installedAppVersion).appstoreLookupResult
-            }
-            .replaceError(with: .noResults)
-            .eraseToAnyPublisher()
+        provider.isAppUpdated()
     }
 
-    /// Retrieves metadata from the App Store for the Bundle ID provided and compares versions to determine if an update is needed.
-    /// - parameter completion: The completion block to be called on the main thread when the validation has finished.
-    /// - returns: `AppStoreLookupResult` with the status of the lookup operation.
+    /// Checks if the app is updated using a completion handler.
+    ///
+    /// - Parameter completion: Closure called with the result of the update check as `AppStoreLookupResult`.
     public func isAppUpdated(completion: @escaping (AppStoreLookupResult) -> Void) {
-        urlSession
-            .dataTask(with: lookupRequest) { data, _, _ in
-                guard let data = data,
-                    let lookup = try? self.decoder.decode(AppStoreLookup.self, from: data)
-                else {
-                    return
-                }
-
-                if !lookup.results.isEmpty, let appStore = lookup.results.first {
-                    self.appId = appStore.appId
-                    DispatchQueue.main.async {
-                        completion(
-                            self.compareVersions(appStore.version, self.installedAppVersion).appstoreLookupResult
-                        )
-                    }
-                } else {
-                    DispatchQueue.main.async {
-                        completion(.noResults)
-                    }
-                }
-            }.resume()
-    }
-
-    private func compareVersions(_ appstoreVersion: String, _ installedVersion: String) -> ComparisonResult {
-        let versionDelimiter = "."
-        var firstVersionComponents = appstoreVersion.components(separatedBy: versionDelimiter)
-        var secondVersionComponents = installedVersion.components(separatedBy: versionDelimiter)
-
-        let versionDiff = firstVersionComponents.count - secondVersionComponents.count
-
-        if versionDiff == 0 {
-            // Both versions are in the same format, compare normally
-            return appstoreVersion.compare(installedVersion, options: .numeric)
-        } else {
-            let zeros = Array(repeating: "0", count: abs(versionDiff))
-            // Determine which version needs to be adapted to match component count
-            if versionDiff > 0 {
-                secondVersionComponents.append(contentsOf: zeros)
-            } else {
-                firstVersionComponents.append(contentsOf: zeros)
-            }
-            return firstVersionComponents.joined(separator: versionDelimiter)
-                .compare(
-                    secondVersionComponents.joined(separator: versionDelimiter),
-                    options: .numeric
-                )
-        }
-    }
-
-    private func mapComparisonToLookupResult(_ comparisonResult: ComparisonResult) -> AppStoreLookupResult {
-        switch comparisonResult {
-        case .orderedSame:
-            return .updated
-        case .orderedDescending:
-            return .outdated
-        case .orderedAscending:
-            return .developmentOrBeta
-        }
-    }
-}
-
-// MARK: - AppStoreLookup
-
-struct AppStoreLookup: Decodable {
-    let resultCount: Int
-    let results: [LookupResult]
-
-    struct LookupResult: Decodable {
-        let version: String
-        let bundleId: String
-        let appId: String
-
-        enum CodingKeys: String, CodingKey {
-            case version, bundleId
-            case appId = "trackId"
-        }
-
-        init(
-            from decoder: Decoder
-        ) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-
-            let intValue = try container.decode(Int.self, forKey: .appId)
-
-            self.appId = String(intValue)
-            self.bundleId = try container.decode(String.self, forKey: .bundleId)
-            self.version = try container.decode(String.self, forKey: .version)
-        }
-    }
-}
-
-// MARK: - AppstoreLookupResult
-
-public enum AppStoreLookupResult: Equatable {
-    /// State that means the app is currently updated
-    case updated
-    /// State that means the app is currently outdated
-    case outdated
-    /// State that means installed version is higher than latest on AppStore.
-    /// This is possible if the installed version is a development / beta build (eg. Xcode, Testflight).
-    /// Worst case scenario is that the response from apple is outdated, which is unlikely to happen.
-    case developmentOrBeta
-    /// State that means that the bundleId query returned no results
-    case noResults
-
-    /// Lookup Result description.
-    var description: String {
-        switch self {
-        case .updated:
-            return "The app is currently the latest version"
-        case .outdated:
-            return "The app has an update available"
-        case .developmentOrBeta:
-            return "The app version is either from a development or beta build."
-        case .noResults:
-            return "The query produced no results, please check the BundleID provided is correct."
-        }
-    }
-
-    public static func == (lhs: AppStoreLookupResult, rhs: AppStoreLookupResult) -> Bool {
-        lhs.description == rhs.description
-    }
-}
-
-extension ComparisonResult {
-    var appstoreLookupResult: AppStoreLookupResult {
-        switch self {
-        case .orderedSame:
-            return .updated
-        case .orderedDescending:
-            return .outdated
-        case .orderedAscending:
-            return .developmentOrBeta
-        }
+        provider.isAppUpdated(completion: completion)
     }
 }
