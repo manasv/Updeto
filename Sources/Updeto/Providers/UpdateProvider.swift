@@ -29,3 +29,12 @@ public protocol UpdateProvider {
     /// The App Store URL for the app, if available.
     var appstoreURL: URL? { get }
 }
+
+/// Optional protocol for providers that support async/await.
+@available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+public protocol AsyncUpdateProvider: UpdateProvider {
+    /// Checks if the app is updated using async/await.
+    ///
+    /// - Returns: The result of the update check as `AppStoreLookupResult`.
+    func isAppUpdated() async -> AppStoreLookupResult
+}

@@ -71,4 +71,22 @@ public final class Updeto: UpdateProvider {
     public func isAppUpdated(completion: @escaping (AppStoreLookupResult) -> Void) {
         provider.isAppUpdated(completion: completion)
     }
+
+    /// Checks if the app is updated using async/await.
+    ///
+    /// - Returns: The result of the update check as `AppStoreLookupResult`.
+    /// - Throws: Any error thrown by the underlying provider.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+    public func isAppUpdated() async -> AppStoreLookupResult {
+        if let asyncProvider = provider as? (any AsyncUpdateProvider) {
+            return await asyncProvider.isAppUpdated()
+        } else {
+            // Fallback to completion-based API if async is not implemented
+            return await withCheckedContinuation { continuation in
+                provider.isAppUpdated { result in
+                    continuation.resume(returning: result)
+                }
+            }
+        }
+    }
 }
