@@ -1,70 +1,104 @@
 # Updeto
 
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmanasv%2FUpdeto%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/manasv/Updeto)
-[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fmanasv%2FUpdeto%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/manasv/Updeto)
+[![Swift Package Index](https://img.shields.io/badge/Swift%20Package%20Index-compatible-brightgreen.svg)](https://swiftpackageindex.com/)
+[![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20tvOS-blue.svg)](https://swiftpackageindex.com/)
+[![Swift](https://img.shields.io/badge/swift-5.7%2B-orange.svg)](https://swiftpackageindex.com/)
 
-### ✅ Update checker for iOS Apps
+**Updeto** is a Swift library for checking if your app is up-to-date on the App Store. It uses a provider-based architecture, supporting Combine, async/await, and completion handler APIs.
 
-# Summary
+## Features
 
-Updeto is a simple package that will help you to check if the currently installed version is the same as the latest one available on App Store.
+- Check for updates using the App Store (iTunes Lookup API)
+- Pluggable provider system (use your own server or logic)
+- Supports Combine, async/await, and completion handlers
+- Returns rich result types (`AppStoreLookupResult`)
 
-# Installation
+## Installation
 
-`Updeto` is available via Swift Package Manager
-
-Using `Xcode` go to `File -> Swift Packages -> Add Package Dependency` and enter `https://github.com/manasv/Updeto`
-
-# Usage
-
-The convenience API yet simple, has mainly two methods depending on your preference to retrieve the update status, either with Combine or via completion block.
-
-If you are either on iOS / iPadOS, you will have access to a singleton that automatically retrieves the Bundle ID and App Version in your app.
+Add Updeto to your project using Swift Package Manager:
 
 ```swift
-Updeto.shared.isAppUpdated { result in
+.package(url: "https://github.com/yourusername/Updeto.git", from: "1.0.0")
+```
+
+## Usage
+
+### Basic Usage
+
+```swift
+import Updeto
+
+let updeto = Updeto()
+
+// Combine (iOS 15+, macOS 12+)
+if #available(iOS 15.0, macOS 12.0, *) {
+    let cancellable = updeto.isAppUpdated()
+        .sink { result in
+            print(result) // .updated, .outdated, .developmentOrBeta, .noResults
+        }
+}
+
+// Completion Handler
+updeto.isAppUpdated { result in
+    print(result)
+}
+
+// Async/Await (iOS 15+, macOS 12+)
+if #available(iOS 15.0, macOS 12.0, *) {
+    Task {
+        let result = await updeto.isAppUpdated()
+        print(result)
+    }
+}
+```
+
+### Custom Provider
+
+You can provide your own update logic by conforming to `UpdateProvider` or `AsyncUpdateProvider`:
+
+```swift
+class MyCustomProvider: UpdateProvider {
+    // ...implement required properties and methods...
+}
+
+let updeto = Updeto(provider: MyCustomProvider())
+```
+
+### Result Types
+
+`AppStoreLookupResult` can be:
+
+- `.updated` – The app is up to date
+- `.outdated` – An update is available
+- `.developmentOrBeta` – Installed version is newer (e.g., beta)
+- `.noResults` – No app found for the bundle ID
+
+## API Reference
+
+- `Updeto`: Main entry point, facade for update checking
+- `AppStoreProvider`: Default provider using the App Store
+- `UpdateProvider`: Protocol for custom providers
+- `AsyncUpdateProvider`: Protocol for async/await support
+
+## Example
+
+```swift
+let updeto = Updeto()
+updeto.isAppUpdated { result in
     switch result {
     case .updated:
-        // Do something 
+        print("App is up to date!")
     case .outdated:
-        // Do something 
-    case .noResults:
-        // Do something
+        print("Update available!")
     case .developmentOrBeta:
-        // Do something
+        print("Running a development or beta version.")
+    case .noResults:
+        print("App not found on the App Store.")
     }
 }
 ```
 
-Also you can create your own Updeto instance from the provided inits, requiring you to provide `bundleId` and `currentAppVersion`, you can optionally provide `appId` if you already know the one for your app, or it will be written when the Appstore Lookup is made, so you can after that perform something with the URL like:
+## License
 
-```swift
-if let url = Updeto.shared.appstoreURL {
-    UIApplication.shared.canOpenURL(url){
-        UIApplication.shared.openURL(url)
-    }
-}
-```
-
-Or whatever you want to do with the URL.
-
-# TODOs
-
-- [ ]  Improve the way `appstoreURL` is used, as right now if it's not set, is only a nil value.
-- [ ]  Any other functionality that can be useful with what's provided by the Appstore Lookup
-- [ ]  Decent rework to improve unit testing
-
-# Considerations
-
-This is a undocumented API (or kinda API), so Apple may change it in any moment and the result may change, use it at your own risk, however I will try to maintain it as up to date as possible to bring the same functionality.
-
-Hope you can find this useful, even if you can do what the library does without major effort, I aimed to bring it in a easy way for you.
-
-# Contributing
-
-1. Fork Updeto
-2. Create your feature branch
-3. Commit your changes, along with unit tests (Currently using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).)
-4. Push to the branch
-4. Create pull request
+MIT © 2025 Manuel Sánchez
 
