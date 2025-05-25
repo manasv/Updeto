@@ -2,7 +2,6 @@ import Foundation
 #if canImport(Combine)
 import Combine
 #endif
-import Models.AppStoreLookupResult
 
 /// Protocol for update providers (App Store, custom servers, etc.)
 ///

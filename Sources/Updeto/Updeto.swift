@@ -26,9 +26,6 @@ import Foundation
 #if canImport(Combine)
 import Combine
 #endif
-import Models.AppStoreLookupResult
-import Providers.UpdateProvider
-import Providers.AppStoreProvider
 
 // MARK: - Updeto (Facade)
 
@@ -36,7 +33,7 @@ import Providers.AppStoreProvider
 ///
 /// By default, it uses the App Store provider, but you can inject any custom provider conforming to `UpdateProvider`.
 public final class Updeto: UpdateProvider {
-    private let provider: UpdateProvider
+    private var provider: UpdateProvider
 
     /// The bundle identifier of the app being checked.
     public var bundleId: String { provider.bundleId }
@@ -52,7 +49,7 @@ public final class Updeto: UpdateProvider {
 
     /// Creates an Updeto instance with the given update provider.
     /// - Parameter provider: The update provider to use. Defaults to `AppStoreProvider()`.
-    public init(provider: UpdateProvider = AppStoreProvider()) {
+    public init(provider: UpdateProvider = AppStoreProvider(bundleId: Bundle.main.bundleIdentifier!, installedAppVersion: (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)!)) {
         self.provider = provider
     }
 

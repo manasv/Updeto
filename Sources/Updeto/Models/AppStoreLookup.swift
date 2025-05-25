@@ -1,7 +1,7 @@
 import Foundation
 
 /// The response model for the iTunes Lookup API.
-struct AppStoreLookup: Decodable {
+public struct AppStoreLookup: Decodable {
     /// The number of results returned by the API.
     let resultCount: Int
     /// The array of lookup results.

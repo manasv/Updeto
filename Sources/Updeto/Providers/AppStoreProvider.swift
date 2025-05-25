@@ -2,9 +2,6 @@ import Foundation
 #if canImport(Combine)
 import Combine
 #endif
-import Models.AppStoreLookup
-import Models.AppStoreLookupResult
-import Providers.UpdateProvider
 
 /// Default provider for App Store update checks (iOS, iPadOS, macOS, tvOS).
 ///
@@ -125,25 +122,6 @@ public final class AppStoreProvider: UpdateProvider {
                     }
                 }
             }.resume()
-    }
-
-    /// Checks if the app is updated using async/await.
-    ///
-    /// - Returns: The result of the update check as `AppStoreLookupResult`.
-    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
-    public func isAppUpdated() async -> AppStoreLookupResult {
-        do {
-            let (data, _) = try await urlSession.data(for: lookupRequest)
-            let lookup = try decoder.decode(AppStoreLookup.self, from: data)
-            if !lookup.results.isEmpty, let result = lookup.results.first {
-                self.appId = result.appId
-                return self.compareVersions(result.version, self.installedAppVersion).appstoreLookupResult
-            } else {
-                return .noResults
-            }
-        } catch {
-            return .noResults
-        }
     }
 
     private func compareVersions(_ appstoreVersion: String, _ installedVersion: String) -> ComparisonResult {
