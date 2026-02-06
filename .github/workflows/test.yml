@@ -6,6 +6,24 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      run_live_tests:
+        description: "Run live App Store integration test"
+        required: false
+        type: boolean
+        default: false
+      live_bundle_id:
+        description: "Bundle ID for live integration test (required if live tests enabled)"
+        required: false
+        type: string
+      live_country:
+        description: "Storefront country for live integration test (optional)"
+        required: false
+        type: string
+      live_installed_version:
+        description: "Installed app version to compare in live test (optional)"
+        required: false
+        type: string
 
 jobs:
   build_and_test:
@@ -26,4 +44,9 @@ jobs:
         run: swift build -c release
 
       - name: Run Tests
+        env:
+          UPDETO_RUN_LIVE_TESTS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_live_tests == 'true' && '1' || '0' }}
+          UPDETO_LIVE_BUNDLE_ID: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.live_bundle_id || '' }}
+          UPDETO_LIVE_COUNTRY: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.live_country || '' }}
+          UPDETO_LIVE_INSTALLED_VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.live_installed_version || '' }}
         run: swift test
