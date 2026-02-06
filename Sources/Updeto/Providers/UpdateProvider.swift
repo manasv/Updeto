@@ -37,3 +37,54 @@ public protocol AsyncUpdateProvider: UpdateProvider {
     /// - Returns: The result of the update check as `AppStoreLookupResult`.
     func isAppUpdated() async -> AppStoreLookupResult
 }
+
+/// Optional protocol for providers that expose rich update metadata.
+public protocol UpdateInfoProvider: UpdateProvider {
+    /// Checks for updates and returns rich metadata.
+    func updateInfo(completion: @escaping (AppStoreUpdateInfo) -> Void)
+
+    /// Checks for updates and emits rich metadata.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+    func updateInfo() -> AnyPublisher<AppStoreUpdateInfo, Never>
+}
+
+/// Optional protocol for providers that support async rich update metadata.
+@available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+public protocol AsyncUpdateInfoProvider: UpdateInfoProvider {
+    /// Checks for updates and returns rich metadata.
+    func updateInfo() async -> AppStoreUpdateInfo
+}
+
+/// Optional protocol for providers that expose explicit error information.
+public protocol ErrorAwareUpdateProvider: UpdateProvider {
+    /// Checks if the app is updated and returns a result with detailed errors.
+    func isAppUpdatedResult(completion: @escaping (Result<AppStoreLookupResult, UpdetoError>) -> Void)
+
+    /// Checks if the app is updated and emits detailed errors.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+    func isAppUpdatedResult() -> AnyPublisher<AppStoreLookupResult, UpdetoError>
+}
+
+/// Optional protocol for providers that expose rich update metadata with explicit errors.
+public protocol ErrorAwareUpdateInfoProvider: UpdateInfoProvider {
+    /// Checks for updates and returns rich metadata with detailed errors.
+    func updateInfoResult(completion: @escaping (Result<AppStoreUpdateInfo, UpdetoError>) -> Void)
+
+    /// Checks for updates and emits rich metadata with detailed errors.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+    func updateInfoResult() -> AnyPublisher<AppStoreUpdateInfo, UpdetoError>
+}
+
+/// Optional protocol for providers that support async/await with detailed errors.
+@available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+public protocol AsyncErrorAwareUpdateProvider: ErrorAwareUpdateProvider {
+    /// Checks if the app is updated and throws detailed errors.
+    func isAppUpdatedResult() async throws -> AppStoreLookupResult
+}
+
+/// Optional protocol for providers that support async rich metadata with detailed errors.
+@available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+public protocol AsyncErrorAwareUpdateInfoProvider: ErrorAwareUpdateInfoProvider {
+    /// Checks for updates and throws rich metadata with detailed errors.
+    func updateInfoResult() async throws -> AppStoreUpdateInfo
+}

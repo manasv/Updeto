@@ -49,7 +49,12 @@ public final class Updeto: UpdateProvider {
 
     /// Creates an Updeto instance with the given update provider.
     /// - Parameter provider: The update provider to use. Defaults to `AppStoreProvider()`.
-    public init(provider: UpdateProvider = AppStoreProvider(bundleId: Bundle.main.bundleIdentifier!, installedAppVersion: (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String)!)) {
+    public init(
+        provider: UpdateProvider = AppStoreProvider(
+            bundleId: Bundle.main.bundleIdentifier ?? "",
+            installedAppVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+        )
+    ) {
         self.provider = provider
     }
 
@@ -69,6 +74,89 @@ public final class Updeto: UpdateProvider {
         provider.isAppUpdated(completion: completion)
     }
 
+    /// Checks if the app is updated and returns a detailed result with possible errors.
+    ///
+    /// - Parameter completion: Closure called with either an update result or an `UpdetoError`.
+    public func isAppUpdatedResult(completion: @escaping (Result<AppStoreLookupResult, UpdetoError>) -> Void) {
+        if let errorAwareProvider = provider as? any ErrorAwareUpdateProvider {
+            errorAwareProvider.isAppUpdatedResult(completion: completion)
+            return
+        }
+
+        provider.isAppUpdated { result in
+            completion(.success(result))
+        }
+    }
+
+    /// Checks for updates and returns rich metadata.
+    ///
+    /// - Parameter completion: Closure called with `AppStoreUpdateInfo`.
+    public func updateInfo(completion: @escaping (AppStoreUpdateInfo) -> Void) {
+        if let infoProvider = provider as? any UpdateInfoProvider {
+            infoProvider.updateInfo(completion: completion)
+            return
+        }
+
+        provider.isAppUpdated { result in
+            completion(
+                AppStoreUpdateInfo(
+                    result: result,
+                    installedVersion: self.installedAppVersion,
+                    storeVersion: nil,
+                    appId: self.appId.isEmpty ? nil : self.appId,
+                    appStoreURL: self.appstoreURL,
+                    bundleId: self.bundleId,
+                    country: nil
+                )
+            )
+        }
+    }
+
+    /// Checks for updates and returns rich metadata with detailed errors.
+    ///
+    /// - Parameter completion: Closure called with either `AppStoreUpdateInfo` or an `UpdetoError`.
+    public func updateInfoResult(completion: @escaping (Result<AppStoreUpdateInfo, UpdetoError>) -> Void) {
+        if let errorAwareInfoProvider = provider as? any ErrorAwareUpdateInfoProvider {
+            errorAwareInfoProvider.updateInfoResult(completion: completion)
+            return
+        }
+
+        if let errorAwareProvider = provider as? any ErrorAwareUpdateProvider {
+            errorAwareProvider.isAppUpdatedResult { result in
+                completion(
+                    result.map { status in
+                        AppStoreUpdateInfo(
+                            result: status,
+                            installedVersion: self.installedAppVersion,
+                            storeVersion: nil,
+                            appId: self.appId.isEmpty ? nil : self.appId,
+                            appStoreURL: self.appstoreURL,
+                            bundleId: self.bundleId,
+                            country: nil
+                        )
+                    }
+                )
+            }
+            return
+        }
+
+        provider.isAppUpdated { result in
+            completion(
+                .success(
+                    AppStoreUpdateInfo(
+                        result: result,
+                        installedVersion: self.installedAppVersion,
+                        storeVersion: nil,
+                        appId: self.appId.isEmpty ? nil : self.appId,
+                        appStoreURL: self.appstoreURL,
+                        bundleId: self.bundleId,
+                        country: nil
+                    )
+                )
+            )
+        }
+    }
+
     /// Checks if the app is updated using async/await.
     ///
     /// - Returns: The result of the update check as `AppStoreLookupResult`.
@@ -85,5 +173,169 @@ public final class Updeto: UpdateProvider {
                 }
             }
         }
+    }
+
+    /// Checks for updates and returns rich metadata using async/await.
+    ///
+    /// - Returns: `AppStoreUpdateInfo`.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+    public func updateInfo() async -> AppStoreUpdateInfo {
+        if let asyncInfoProvider = provider as? (any AsyncUpdateInfoProvider) {
+            return await asyncInfoProvider.updateInfo()
+        }
+
+        if let infoProvider = provider as? any UpdateInfoProvider {
+            return await withCheckedContinuation { continuation in
+                infoProvider.updateInfo { info in
+                    continuation.resume(returning: info)
+                }
+            }
+        }
+
+        let result = await isAppUpdated()
+        return AppStoreUpdateInfo(
+            result: result,
+            installedVersion: installedAppVersion,
+            storeVersion: nil,
+            appId: appId.isEmpty ? nil : appId,
+            appStoreURL: appstoreURL,
+            bundleId: bundleId,
+            country: nil
+        )
+    }
+
+    /// Checks if the app is updated and throws detailed errors when supported by the provider.
+    ///
+    /// - Returns: The result of the update check as `AppStoreLookupResult`.
+    /// - Throws: An `UpdetoError` if the provider supports error-aware async lookups.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+    public func isAppUpdatedResult() async throws -> AppStoreLookupResult {
+        if let asyncErrorAwareProvider = provider as? (any AsyncErrorAwareUpdateProvider) {
+            return try await asyncErrorAwareProvider.isAppUpdatedResult()
+        }
+
+        if let errorAwareProvider = provider as? any ErrorAwareUpdateProvider {
+            return try await withCheckedThrowingContinuation { continuation in
+                errorAwareProvider.isAppUpdatedResult { result in
+                    continuation.resume(with: result)
+                }
+            }
+        }
+
+        return await withCheckedContinuation { continuation in
+            provider.isAppUpdated { result in
+                continuation.resume(returning: result)
+            }
+        }
+    }
+
+    /// Checks for updates and returns rich metadata with detailed errors using async/await.
+    ///
+    /// - Returns: `AppStoreUpdateInfo`.
+    /// - Throws: `UpdetoError` when the provider supports error-aware lookups.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+    public func updateInfoResult() async throws -> AppStoreUpdateInfo {
+        if let asyncErrorAwareInfoProvider = provider as? (any AsyncErrorAwareUpdateInfoProvider) {
+            return try await asyncErrorAwareInfoProvider.updateInfoResult()
+        }
+
+        if let errorAwareInfoProvider = provider as? any ErrorAwareUpdateInfoProvider {
+            return try await withCheckedThrowingContinuation { continuation in
+                errorAwareInfoProvider.updateInfoResult { result in
+                    continuation.resume(with: result)
+                }
+            }
+        }
+
+        if let asyncInfoProvider = provider as? (any AsyncUpdateInfoProvider) {
+            return await asyncInfoProvider.updateInfo()
+        }
+
+        if let infoProvider = provider as? any UpdateInfoProvider {
+            return await withCheckedContinuation { continuation in
+                infoProvider.updateInfo { info in
+                    continuation.resume(returning: info)
+                }
+            }
+        }
+
+        let result = try await isAppUpdatedResult()
+        return AppStoreUpdateInfo(
+            result: result,
+            installedVersion: installedAppVersion,
+            storeVersion: nil,
+            appId: appId.isEmpty ? nil : appId,
+            appStoreURL: appstoreURL,
+            bundleId: bundleId,
+            country: nil
+        )
+    }
+
+    /// Checks if the app is updated and emits detailed errors when supported by the provider.
+    ///
+    /// - Returns: A publisher emitting update results or `UpdetoError`.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+    public func isAppUpdatedResult() -> AnyPublisher<AppStoreLookupResult, UpdetoError> {
+        if let errorAwareProvider = provider as? any ErrorAwareUpdateProvider {
+            return errorAwareProvider.isAppUpdatedResult()
+        }
+
+        return provider.isAppUpdated()
+            .setFailureType(to: UpdetoError.self)
+            .eraseToAnyPublisher()
+    }
+
+    /// Checks for updates and emits rich metadata.
+    ///
+    /// - Returns: A publisher emitting `AppStoreUpdateInfo`.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+    public func updateInfo() -> AnyPublisher<AppStoreUpdateInfo, Never> {
+        if let infoProvider = provider as? any UpdateInfoProvider {
+            return infoProvider.updateInfo()
+        }
+
+        return provider.isAppUpdated()
+            .map { result in
+                AppStoreUpdateInfo(
+                    result: result,
+                    installedVersion: self.installedAppVersion,
+                    storeVersion: nil,
+                    appId: self.appId.isEmpty ? nil : self.appId,
+                    appStoreURL: self.appstoreURL,
+                    bundleId: self.bundleId,
+                    country: nil
+                )
+            }
+            .eraseToAnyPublisher()
+    }
+
+    /// Checks for updates and emits rich metadata with detailed errors.
+    ///
+    /// - Returns: A publisher emitting `AppStoreUpdateInfo` or `UpdetoError`.
+    @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
+    public func updateInfoResult() -> AnyPublisher<AppStoreUpdateInfo, UpdetoError> {
+        if let errorAwareInfoProvider = provider as? any ErrorAwareUpdateInfoProvider {
+            return errorAwareInfoProvider.updateInfoResult()
+        }
+
+        if let infoProvider = provider as? any UpdateInfoProvider {
+            return infoProvider.updateInfo()
+                .setFailureType(to: UpdetoError.self)
+                .eraseToAnyPublisher()
+        }
+
+        return isAppUpdatedResult()
+            .map { status in
+                AppStoreUpdateInfo(
+                    result: status,
+                    installedVersion: self.installedAppVersion,
+                    storeVersion: nil,
+                    appId: self.appId.isEmpty ? nil : self.appId,
+                    appStoreURL: self.appstoreURL,
+                    bundleId: self.bundleId,
+                    country: nil
+                )
+            }
+            .eraseToAnyPublisher()
     }
 }
