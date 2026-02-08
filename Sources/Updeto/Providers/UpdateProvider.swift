@@ -7,12 +7,14 @@ import Combine
 ///
 /// Adopt this protocol to provide custom update-checking logic for your own server or distribution system.
 public protocol UpdateProvider {
+    #if canImport(Combine)
     /// Checks if the app is updated using Combine.
     ///
     /// - Returns: A publisher emitting the result of the update check as `AppStoreLookupResult`.
     /// - Note: Available on macOS 12.0+, iOS 15.0+, tvOS 15.0+.
     @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
     func isAppUpdated() -> AnyPublisher<AppStoreLookupResult, Never>
+    #endif
 
     /// Checks if the app is updated using a completion handler.
     ///
@@ -43,9 +45,11 @@ public protocol UpdateInfoProvider: UpdateProvider {
     /// Checks for updates and returns rich metadata.
     func updateInfo(completion: @escaping (AppStoreUpdateInfo) -> Void)
 
+    #if canImport(Combine)
     /// Checks for updates and emits rich metadata.
     @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
     func updateInfo() -> AnyPublisher<AppStoreUpdateInfo, Never>
+    #endif
 }
 
 /// Optional protocol for providers that support async rich update metadata.
@@ -60,9 +64,11 @@ public protocol ErrorAwareUpdateProvider: UpdateProvider {
     /// Checks if the app is updated and returns a result with detailed errors.
     func isAppUpdatedResult(completion: @escaping (Result<AppStoreLookupResult, UpdetoError>) -> Void)
 
+    #if canImport(Combine)
     /// Checks if the app is updated and emits detailed errors.
     @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
     func isAppUpdatedResult() -> AnyPublisher<AppStoreLookupResult, UpdetoError>
+    #endif
 }
 
 /// Optional protocol for providers that expose rich update metadata with explicit errors.
@@ -70,9 +76,11 @@ public protocol ErrorAwareUpdateInfoProvider: UpdateInfoProvider {
     /// Checks for updates and returns rich metadata with detailed errors.
     func updateInfoResult(completion: @escaping (Result<AppStoreUpdateInfo, UpdetoError>) -> Void)
 
+    #if canImport(Combine)
     /// Checks for updates and emits rich metadata with detailed errors.
     @available(macOS 12.0, iOS 15.0, tvOS 15.0, *)
     func updateInfoResult() -> AnyPublisher<AppStoreUpdateInfo, UpdetoError>
+    #endif
 }
 
 /// Optional protocol for providers that support async/await with detailed errors.

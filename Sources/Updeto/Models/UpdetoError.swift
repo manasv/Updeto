@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Errors that can happen while performing an update lookup.
 public enum UpdetoError: Error, Sendable, Equatable {

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 #if canImport(Combine)
 import Combine
 #endif
@@ -7,10 +10,6 @@ import Combine
 ///
 /// This provider uses the iTunes Lookup API to check for updates on the App Store.
 public final class AppStoreProvider: UpdateProvider {
-    private enum Constants {
-        static let shortVersionKey = "CFBundleShortVersionString"
-    }
-
     private let urlSession: URLSession
     private let decoder: JSONDecoder
 
@@ -48,7 +47,7 @@ public final class AppStoreProvider: UpdateProvider {
         urlSession: URLSession = .shared,
         decoder: JSONDecoder = JSONDecoder(),
         bundleId: String = Bundle.main.bundleIdentifier ?? "",
-        installedAppVersion: String = Bundle.main.object(forInfoDictionaryKey: Constants.shortVersionKey) as? String ?? "0",
+        installedAppVersion: String = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
         country: String? = AppStoreProvider.defaultCountryCode,
         requestTimeout: TimeInterval = 15,
         retryCount: Int = 0,
@@ -119,6 +118,7 @@ public final class AppStoreProvider: UpdateProvider {
         return request
     }
 
+    #if canImport(Combine)
     /// Checks if the app is updated using Combine.
     ///
     /// - Returns: A publisher emitting the result of the update check as `AppStoreLookupResult`.
@@ -188,6 +188,7 @@ public final class AppStoreProvider: UpdateProvider {
             }
             .eraseToAnyPublisher()
     }
+    #endif
 
     /// Checks if the app is updated using a completion handler.
     ///

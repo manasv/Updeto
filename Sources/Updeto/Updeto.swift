@@ -58,6 +58,7 @@ public final class Updeto: UpdateProvider {
         self.provider = provider
     }
 
+    #if canImport(Combine)
     /// Checks if the app is updated using Combine.
     ///
     /// - Returns: A publisher emitting the result of the update check as `AppStoreLookupResult`.
@@ -66,6 +67,7 @@ public final class Updeto: UpdateProvider {
     public func isAppUpdated() -> AnyPublisher<AppStoreLookupResult, Never> {
         provider.isAppUpdated()
     }
+    #endif
 
     /// Checks if the app is updated using a completion handler.
     ///
@@ -271,6 +273,7 @@ public final class Updeto: UpdateProvider {
         )
     }
 
+    #if canImport(Combine)
     /// Checks if the app is updated and emits detailed errors when supported by the provider.
     ///
     /// - Returns: A publisher emitting update results or `UpdetoError`.
@@ -338,4 +341,5 @@ public final class Updeto: UpdateProvider {
             }
             .eraseToAnyPublisher()
     }
+    #endif
 }
